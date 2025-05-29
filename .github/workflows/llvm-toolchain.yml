@@ -30,7 +30,7 @@ jobs:
       - name: Install build dependencies (CMake, Ninja, Git)
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl build-essential python3 cmake ninja-build git
+          sudo apt-get install -y curl build-essential python3 cmake ninja-build git texinfo flex bison libgmp-dev libmpfr-dev
 
       - name: Clone Binutils-GDB for Gold plugin headers and build
         run: |
@@ -38,6 +38,7 @@ jobs:
           mkdir binutils-build
           cd binutils-build
           ../binutils/configure --enable-gold --enable-plugins --disable-werror
+          make all-gold
 
       - name: Download LLVM Project release tarball
         run: |
