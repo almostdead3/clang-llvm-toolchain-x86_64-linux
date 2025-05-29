@@ -27,7 +27,7 @@ jobs:
       - name: Check System Default Linker (ld -v)
         run: |
           echo "--- Checking system default linker ---"
-          /usr/bin/ld -v
+          /usr/bin/ld.gold -plugin
           echo "--- End of system default linker check ---"
 
       - name: Create necessary directories
@@ -42,7 +42,7 @@ jobs:
       - name: Check System Default Linker (ld -v)
         run: |
           echo "--- Checking system default linker ---"
-          /usr/bin/ld -v
+          /usr/bin/ld.gold -plugin
           echo "--- End of system default linker check ---"
 
       - name: Download LLVM Project release tarball
@@ -63,7 +63,7 @@ jobs:
       - name: Check System Default Linker (ld -v)
         run: |
           echo "--- Checking system default linker ---"
-          /usr/bin/ld -v
+          /usr/bin/ld.gold -plugin
           echo "--- End of system default linker check ---"
 
       - name: Verify Binutils Headers
@@ -82,7 +82,7 @@ jobs:
       - name: Check System Default Linker (ld -v)
         run: |
           echo "--- Checking system default linker ---"
-          /usr/bin/ld -v
+          /usr/bin/ld.gold -plugin
           echo "--- End of system default linker check ---"
 
       - name: Configure LLVM with CMake (Stage 1 only)
@@ -125,7 +125,7 @@ jobs:
       - name: Check System Default Linker (ld -v)
         run: |
           echo "--- Checking system default linker ---"
-          /usr/bin/ld -v
+          /usr/bin/ld.gold -plugin
           echo "--- End of system default linker check ---"
 
       - name: Final Check for Gold Plugin Detection
