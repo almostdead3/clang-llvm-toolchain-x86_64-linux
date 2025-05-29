@@ -74,7 +74,8 @@ jobs:
             -DBUILTINS_CMAKE_ARGS="-DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF" \
             -DRUNTIMES_CMAKE_ARGS="-DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF" \
             -DLLVM_ENABLE_LIBXML2=OFF \
-            -DLLVM_BINUTILS_INCDIR="${BINUTILS_INCLUDE_DIR}"
+            -DLLVM_BINUTILS_INCDIR="${BINUTILS_INCLUDE_DIR}" \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 
       - name: Build Stage 1 with Ninja
         run: ninja -C build-stage1 install
@@ -108,7 +109,8 @@ jobs:
             -DLLVM_ENABLE_LIBXML2=OFF \
             -DLIBCXX_HAS_ATOMIC_LIB=OFF \
             -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=ON \
-            -DLLVM_BINUTILS_INCDIR="${BINUTILS_INCLUDE_DIR}"
+            -DLLVM_BINUTILS_INCDIR="${BINUTILS_INCLUDE_DIR}" \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 
       - name: Build Stage 2 with Ninja
         run: |
