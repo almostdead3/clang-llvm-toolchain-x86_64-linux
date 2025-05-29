@@ -35,9 +35,19 @@ jobs:
       - name: Extract LLVM Project source
         run: tar -xf llvm-project.tar.xz -C llvm-project --strip-components 1
 
-      - name: Clone Binutils-GDB for Gold plugin headers
+      - name: Clone Binutils-GDB and Checkout Specific Tag for Gold plugin headers
         run: |
-          git clone --depth 1 --branch ${{ inputs.binutils_version }} git://sourceware.org/git/binutils-gdb.git binutils
+          git clone --depth 1 git://sourceware.org/git/binutils-gdb.git binutils
+          cd binutils
+          git checkout tags/${{ inputs.binutils_version }} # Explicitly checkout the tag
+          cd ..
+
+      - name: Verify Binutils Headers
+        run: |
+          echo "Contents of binutils/include:"
+          ls -l "${BINUTILS_INCLUDE_DIR}"
+          echo "Searching for plugin-api.h:"
+          find "${BINUTILS_INCLUDE_DIR}" -name "plugin-api.h"
 
       - name: Configure Stage 1 with CMake
         run: |
