@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BINUTILS_INCLUDE_DIR: ${{ github.workspace }}/binutils/include
 
     steps:
       - name: Checkout repository's default branch
@@ -31,6 +32,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y curl build-essential python3 cmake ninja-build git
 
+      - name: Clone Binutils-GDB for Gold plugin headers and build
+        run: |
+          git clone --depth 1 git://sourceware.org/git/binutils-gdb.git binutils
+          mkdir binutils-build
+          cd binutils-build
+          ../binutils/configure --enable-gold --enable-plugins --disable-werror
+          make all-gold
+
       - name: Download LLVM Project release tarball
         run: |
           curl --location https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ inputs.version }}/llvm-project-${{ inputs.version }}.src.tar.xz -o llvm-project.tar.xz
@@ -41,7 +50,7 @@ jobs:
       - name: Configure LLVM with CMake (Official Method)
         working-directory: mybuilddir
         run: |
-          cmake ../llvm -G Ninja -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/x86_64-linux-llvm-toolchain -DCMAKE_BUILD_TYPE=Release
+          cmake ../llvm -G Ninja -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/x86_64-linux-llvm-toolchain -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=AArch64 -DLLVM_BINUTILS_INCDIR="${{ env.BINUTILS_INCLUDE_DIR }}"
 
       - name: Build LLVM (Official Method)
         working-directory: mybuilddir
