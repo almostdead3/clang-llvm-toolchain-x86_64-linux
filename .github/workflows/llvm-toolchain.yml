@@ -100,6 +100,6 @@ jobs:
 
       - name: Final Check for Gold Plugin Detection
         run: |
-          echo "--- CMakeCache.txt excerpt for Gold Plugin Detection ---"
-          grep -E "BINUTILS_INCDIR|CMAKE_POSITION_INDEPENDENT_CODE|LLVM_BUILD_LLVMGOLD_PLUGIN" build-stage1/CMakeCache.txt || echo "No relevant entries found in CMakeCache.txt"
+          echo "--- CMakeCache.txt excerpt for Gold Plugin Detection (Final Check) ---"
+          grep -E "BINUTILS_INCDIR|LLVM_ENABLE_PIC|LLVM_BUILD_LLVMGOLD_PLUGIN" build-stage1/CMakeCache.txt || echo "No relevant entries found for Gold Plugin in CMakeCache.txt"
           echo "--- End of CMakeCache.txt excerpt ---"
