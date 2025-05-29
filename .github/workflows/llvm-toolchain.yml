@@ -57,6 +57,11 @@ jobs:
 
       - name: Configure LLVM with CMake (Stage 1 only)
         run: |
+          mkdir -p build-stage1
+          echo "LLVM_ENABLE_PIC:BOOL=ON" >> build-stage1/CMakeCache.txt
+          echo "Setting LLVM_ENABLE_PIC=TRUE directly in build-stage1/CMakeCache.txt"
+          cat build-stage1/CMakeCache.txt
+
           cmake -S llvm-project/llvm -B build-stage1 -G Ninja \
             -DCMAKE_INSTALL_PREFIX=stage1 \
             -DCMAKE_BUILD_TYPE=Release \
@@ -79,8 +84,7 @@ jobs:
             -DBUILTINS_CMAKE_ARGS="-DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF" \
             -DRUNTIMES_CMAKE_ARGS="-DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF" \
             -DLLVM_ENABLE_LIBXML2=OFF \
-            -DLLVM_BINUTILS_INCDIR="${BINUTILS_INCLUDE_DIR}" \
-            -DLLVM_ENABLE_PIC=ON
+            -DLLVM_BINUTILS_INCDIR="${BINUTILS_INCLUDE_DIR}"
 
       - name: Check CMake Configuration for Gold Plugin Detection
         run: |
