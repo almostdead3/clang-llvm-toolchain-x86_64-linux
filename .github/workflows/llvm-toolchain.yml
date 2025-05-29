@@ -24,6 +24,12 @@ jobs:
       - name: Checkout repository's default branch
         uses: actions/checkout@v4
 
+      - name: Check System Default Linker (ld -v)
+        run: |
+          echo "--- Checking system default linker ---"
+          /usr/bin/ld -v
+          echo "--- End of system default linker check ---"
+
       - name: Create necessary directories
         run: |
           mkdir llvm-project build-stage1 binutils
@@ -32,6 +38,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y curl build-essential python3 cmake ninja-build git
+
+      - name: Check System Default Linker (ld -v)
+        run: |
+          echo "--- Checking system default linker ---"
+          /usr/bin/ld -v
+          echo "--- End of system default linker check ---"
 
       - name: Download LLVM Project release tarball
         run: |
@@ -48,6 +60,12 @@ jobs:
           git checkout ${{ inputs.binutils_version }}
           cd ..
 
+      - name: Check System Default Linker (ld -v)
+        run: |
+          echo "--- Checking system default linker ---"
+          /usr/bin/ld -v
+          echo "--- End of system default linker check ---"
+
       - name: Verify Binutils Headers
         run: |
           echo "Contents of binutils/include:"
@@ -60,6 +78,12 @@ jobs:
           echo "--- Content of llvm-project/docs/GoldPlugin.html ---"
           cat llvm-project/docs/GoldPlugin.html || echo "GoldPlugin.html not found at expected path."
           echo "--- End of Gold Plugin Documentation ---"
+
+      - name: Check System Default Linker (ld -v)
+        run: |
+          echo "--- Checking system default linker ---"
+          /usr/bin/ld -v
+          echo "--- End of system default linker check ---"
 
       - name: Configure LLVM with CMake (Stage 1 only)
         run: |
@@ -97,6 +121,12 @@ jobs:
           echo "--- Searching for LLVM_ENABLE_PIC in CMakeOutput.log ---"
           grep -E "LLVM_ENABLE_PIC" build-stage1/CMakeFiles/CMakeOutput.log || echo "LLVM_ENABLE_PIC not found in CMakeOutput.log"
           echo "--- End of LLVM_ENABLE_PIC debug ---"
+
+      - name: Check System Default Linker (ld -v)
+        run: |
+          echo "--- Checking system default linker ---"
+          /usr/bin/ld -v
+          echo "--- End of system default linker check ---"
 
       - name: Final Check for Gold Plugin Detection
         run: |
