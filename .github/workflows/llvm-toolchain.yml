@@ -70,7 +70,6 @@ jobs:
 
       - name: Configure Stage 2 with CMake
         run: |
-          export LD_LIBRARY_PATH="$(pwd)/stage1/lib"
           cmake -S llvm-project/llvm -B build-stage2 -G Ninja \
             -DCMAKE_C_COMPILER="$(pwd)/stage1/bin/clang" \
             -DCMAKE_CXX_COMPILER="$(pwd)/stage1/bin/clang++" \
