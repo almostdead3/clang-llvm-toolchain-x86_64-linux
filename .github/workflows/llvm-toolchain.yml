@@ -1,8 +1,12 @@
-name: build-latest-clang-llvm-with-gold-plugin
+name: build-specific-clang-llvm-with-gold-plugin
 
 on:
   workflow_dispatch:
     inputs:
+      version:
+        description: 'LLVM GitHub Release Version (e.g., 18.1.0)'
+        required: true
+        type: string
       binutils_version:
         description: 'Binutils-GDB Git Tag (e.g., binutils-2_41) for Gold plugin headers'
         required: false
@@ -20,13 +24,10 @@ jobs:
       - name: Checkout repository's default branch
         uses: actions/checkout@v4
 
-      - name: Get Latest LLVM Release Version
-        id: get_llvm_version
+      - name: Install build dependencies
         run: |
-          LATEST_LLVM_TAG=$(curl -s "https://api.github.com/repos/llvm/llvm-project/releases/latest" | jq -r '.tag_name')
-          LLVM_VERSION=${LATEST_LLVM_TAG}
-          echo "Discovered latest LLVM version: $LLVM_VERSION"
-          echo "LLVM_VERSION=$LLVM_VERSION" >> $GITHUB_ENV
+          sudo apt-get update
+          sudo apt-get install -y curl build-essential python3 python3-distutils cmake ninja-build git
 
       - name: Create build and installation directories
         run: |
@@ -34,7 +35,7 @@ jobs:
 
       - name: Download LLVM Project release tarball
         run: |
-          curl --location https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ env.LLVM_VERSION }}/llvm-project-${{ env.LLVM_VERSION }}.src.tar.xz -o llvm-project.tar.xz
+          curl --location https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ inputs.version }}/llvm-project-${{ inputs.version }}.src.tar.xz -o llvm-project.tar.xz
 
       - name: Extract LLVM Project source
         run: tar -xf llvm-project.tar.xz -C llvm-project --strip-components 1
@@ -121,5 +122,5 @@ jobs:
 
       - name: Create GitHub Release
         run: |
-          TAG="${{ env.LLVM_VERSION }}_$(date +'%b-%d-%Y')-$(date -d "1970-01-01 UTC $(date +%T)" +%s)s"
+          TAG="${{ inputs.version }}_$(date +'%b-%d-%Y')-$(date -d "1970-01-01 UTC $(date +%T)" +%s)s"
           gh release create "${TAG}" x86_64-linux-llvm-toolchain.tar.gz
