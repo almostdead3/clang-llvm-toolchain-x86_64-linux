@@ -1,4 +1,4 @@
-name: check-llvmgold-detection
+name: official-llvm-build
 
 on:
   workflow_dispatch:
@@ -8,128 +8,72 @@ on:
         required: true
         type: string
       binutils_version:
-        description: 'Binutils-GDB Git Tag (e.g., binutils-2_41) for Gold plugin headers'
+        description: 'Binutils-GDB Git Tag (e.g., binutils-2_41) - Not directly used for official build of LLVMgold.so'
         required: false
         type: string
         default: 'binutils-2_41'
 
 jobs:
-  check-gold-plugin-detection:
+  build-official-llvm:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      BINUTILS_INCLUDE_DIR: ${{ github.workspace }}/binutils/include
 
     steps:
       - name: Checkout repository's default branch
         uses: actions/checkout@v4
 
-      - name: Check System Default Linker (ld -v)
-        run: |
-          echo "--- Checking system default linker ---"
-          /usr/bin/ld.gold -plugin
-          echo "--- End of system default linker check ---"
+      - name: Create build directory
+        run: mkdir mybuilddir
 
-      - name: Create necessary directories
-        run: |
-          mkdir llvm-project build-stage1 binutils
-
-      - name: Install build dependencies
+      - name: Install build dependencies (CMake, Ninja, Git)
         run: |
           sudo apt-get update
           sudo apt-get install -y curl build-essential python3 cmake ninja-build git
-
-      - name: Check System Default Linker (ld -v)
-        run: |
-          echo "--- Checking system default linker ---"
-          /usr/bin/ld.gold -plugin
-          echo "--- End of system default linker check ---"
 
       - name: Download LLVM Project release tarball
         run: |
           curl --location https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ inputs.version }}/llvm-project-${{ inputs.version }}.src.tar.xz -o llvm-project.tar.xz
 
       - name: Extract LLVM Project source
-        run: tar -xf llvm-project.tar.xz -C llvm-project --strip-components 1
+        run: tar -xf llvm-project.tar.xz -C . --strip-components 1
 
-      - name: Clone Binutils-GDB and Checkout Specific Tag for Gold plugin headers
+      - name: Configure LLVM with CMake (Official Method)
+        working-directory: mybuilddir
         run: |
-          git clone git://sourceware.org/git/binutils-gdb.git binutils
-          cd binutils
-          git fetch --all --tags
-          git checkout ${{ inputs.binutils_version }}
-          cd ..
+          cmake ../llvm-project/llvm -G Ninja -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/x86_64-linux-llvm-toolchain
 
-      - name: Check System Default Linker (ld -v)
+      - name: Build LLVM (Official Method)
+        working-directory: mybuilddir
+        run: cmake --build .
+
+      - name: Install LLVM (Official Method)
+        working-directory: mybuilddir
+        run: cmake --build . --target install
+
+      - name: Verify Installed Files (Basic Check)
         run: |
-          echo "--- Checking system default linker ---"
-          /usr/bin/ld.gold -plugin
-          echo "--- End of system default linker check ---"
+          echo "Listing contents of the installed toolchain:"
+          ls -R ${{ github.workspace }}/x86_64-linux-llvm-toolchain
+          echo "Checking for clang executable:"
+          test -f ${{ github.workspace }}/x86_64-linux-llvm-toolchain/bin/clang && echo "clang found." || echo "clang NOT found."
 
-      - name: Verify Binutils Headers
+      - name: Compress toolchain
         run: |
-          echo "Contents of binutils/include:"
-          ls -l "${BINUTILS_INCLUDE_DIR}"
-          echo "Searching for plugin-api.h:"
-          find "${BINUTILS_INCLUDE_DIR}" -name "plugin-api.h"
+          tar -cJvf x86_64-linux-llvm-toolchain-${{ inputs.version }}.tar.xz x86_64-linux-llvm-toolchain
+          echo "Compressed toolchain size:"
+          du -sh x86_64-linux-llvm-toolchain-${{ inputs.version }}.tar.xz
 
-      - name: Print Gold Plugin Documentation (for reference)
-        run: |
-          echo "--- Content of llvm-project/docs/GoldPlugin.html ---"
-          cat llvm-project/docs/GoldPlugin.html || echo "GoldPlugin.html not found at expected path."
-          echo "--- End of Gold Plugin Documentation ---"
-
-      - name: Check System Default Linker (ld -v)
-        run: |
-          echo "--- Checking system default linker ---"
-          /usr/bin/ld.gold -plugin
-          echo "--- End of system default linker check ---"
-
-      - name: Configure LLVM with CMake (Stage 1 only)
-        run: |
-          rm -rf build-stage1
-          mkdir -p build-stage1
-
-          cmake -S llvm-project/llvm -B build-stage1 -G Ninja \
-            -DCMAKE_INSTALL_PREFIX=stage1 \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DLLVM_ENABLE_PROJECTS="clang;lld" \
-            -DLLVM_ENABLE_RUNTIMES="compiler-rt;libunwind;libcxx;libcxxabi" \
-            -DLLVM_TARGETS_TO_BUILD=X86 \
-            -DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF \
-            -DLLVM_INSTALL_TOOLCHAIN_ONLY=ON \
-            -DLLVM_INCLUDE_BENCHMARKS=OFF \
-            -DLLVM_INCLUDE_EXAMPLES=OFF \
-            -DLLVM_INCLUDE_TESTS=OFF \
-            -DCLANG_DEFAULT_UNWINDLIB=libunwind \
-            -DCLANG_DEFAULT_RTLIB=compiler-rt \
-            -DCLANG_DEFAULT_CXX_STDLIB=libc++ \
-            -DCLANG_DEFAULT_LINKER=lld \
-            -DLIBUNWIND_USE_COMPILER_RT=Yes \
-            -DLIBCXX_USE_COMPILER_RT=YES \
-            -DLIBCXXABI_USE_COMPILER_RT=YES \
-            -DLIBCXXABI_USE_LLVM_UNWINDER=YES \
-            -DBUILTINS_CMAKE_ARGS="-DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF" \
-            -DRUNTIMES_CMAKE_ARGS="-DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF" \
-            -DLLVM_ENABLE_LIBXML2=OFF \
-            -DLLVM_BINUTILS_INCDIR="${BINUTILS_INCLUDE_DIR}"
-
-      - name: Debugging LLVM_ENABLE_PIC in CMake logs
-        run: |
-          echo "--- Searching for LLVM_ENABLE_PIC in CMakeCache.txt ---"
-          grep -E "LLVM_ENABLE_PIC" build-stage1/CMakeCache.txt || echo "LLVM_ENABLE_PIC not found in CMakeCache.txt"
-          echo "--- Searching for LLVM_ENABLE_PIC in CMakeOutput.log ---"
-          grep -E "LLVM_ENABLE_PIC" build-stage1/CMakeFiles/CMakeOutput.log || echo "LLVM_ENABLE_PIC not found in CMakeOutput.log"
-          echo "--- End of LLVM_ENABLE_PIC debug ---"
-
-      - name: Check System Default Linker (ld -v)
-        run: |
-          echo "--- Checking system default linker ---"
-          /usr/bin/ld.gold -plugin
-          echo "--- End of system default linker check ---"
-
-      - name: Final Check for Gold Plugin Detection
-        run: |
-          echo "--- CMakeCache.txt excerpt for Gold Plugin Detection (Final Check) ---"
-          grep -E "BINUTILS_INCDIR|LLVM_ENABLE_PIC|LLVM_BUILD_LLVMGOLD_PLUGIN" build-stage1/CMakeCache.txt || echo "No relevant entries found for Gold Plugin in CMakeCache.txt"
-          echo "--- End of CMakeCache.txt excerpt ---"
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.version }}-official-build
+          name: LLVM Clang Toolchain x86_64-linux Official Build ${{ inputs.version }}
+          body: |
+            LLVM Clang Toolchain for x86_64-linux, built as per official CMake notes.
+            Version: ${{ inputs.version }}
+            Note: This build is a minimal official configuration and may not include all components by default.
+          files: x86_64-linux-llvm-toolchain-${{ inputs.version }}.tar.xz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
