@@ -37,9 +37,10 @@ jobs:
 
       - name: Clone Binutils-GDB and Checkout Specific Tag for Gold plugin headers
         run: |
-          git clone --depth 1 git://sourceware.org/git/binutils-gdb.git binutils
+          git clone git://sourceware.org/git/binutils-gdb.git binutils
           cd binutils
-          git checkout tags/${{ inputs.binutils_version }} # Explicitly checkout the tag
+          git fetch --all --tags
+          git checkout ${{ inputs.binutils_version }}
           cd ..
 
       - name: Verify Binutils Headers
