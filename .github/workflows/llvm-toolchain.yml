@@ -80,7 +80,8 @@ jobs:
             -DRUNTIMES_CMAKE_ARGS="-DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF" \
             -DLLVM_ENABLE_LIBXML2=OFF \
             -DLLVM_BINUTILS_INCDIR="${BINUTILS_INCLUDE_DIR}" \
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DLLVM_ENABLE_PIC=ON
 
       - name: Check CMake Configuration for Gold Plugin Detection
         run: |
