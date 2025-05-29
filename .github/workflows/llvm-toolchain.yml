@@ -26,7 +26,7 @@ jobs:
 
       - name: Create necessary directories
         run: |
-          mkdir llvm-project build-stage1 binutils # Only create directories needed for Stage 1 config
+          mkdir llvm-project build-stage1 binutils
 
       - name: Install build dependencies
         run: |
@@ -55,12 +55,16 @@ jobs:
           echo "Searching for plugin-api.h:"
           find "${BINUTILS_INCLUDE_DIR}" -name "plugin-api.h"
 
+      - name: Print Gold Plugin Documentation (for reference)
+        run: |
+          echo "--- Content of llvm-project/docs/GoldPlugin.html ---"
+          cat llvm-project/docs/GoldPlugin.html || echo "GoldPlugin.html not found at expected path."
+          echo "--- End of Gold Plugin Documentation ---"
+
       - name: Configure LLVM with CMake (Stage 1 only)
         run: |
+          rm -rf build-stage1
           mkdir -p build-stage1
-          echo "LLVM_ENABLE_PIC:BOOL=ON" >> build-stage1/CMakeCache.txt
-          echo "Setting LLVM_ENABLE_PIC=TRUE directly in build-stage1/CMakeCache.txt"
-          cat build-stage1/CMakeCache.txt
 
           cmake -S llvm-project/llvm -B build-stage1 -G Ninja \
             -DCMAKE_INSTALL_PREFIX=stage1 \
@@ -86,7 +90,15 @@ jobs:
             -DLLVM_ENABLE_LIBXML2=OFF \
             -DLLVM_BINUTILS_INCDIR="${BINUTILS_INCLUDE_DIR}"
 
-      - name: Check CMake Configuration for Gold Plugin Detection
+      - name: Debugging LLVM_ENABLE_PIC in CMake logs
+        run: |
+          echo "--- Searching for LLVM_ENABLE_PIC in CMakeCache.txt ---"
+          grep -E "LLVM_ENABLE_PIC" build-stage1/CMakeCache.txt || echo "LLVM_ENABLE_PIC not found in CMakeCache.txt"
+          echo "--- Searching for LLVM_ENABLE_PIC in CMakeOutput.log ---"
+          grep -E "LLVM_ENABLE_PIC" build-stage1/CMakeFiles/CMakeOutput.log || echo "LLVM_ENABLE_PIC not found in CMakeOutput.log"
+          echo "--- End of LLVM_ENABLE_PIC debug ---"
+
+      - name: Final Check for Gold Plugin Detection
         run: |
           echo "--- CMakeCache.txt excerpt for Gold Plugin Detection ---"
           grep -E "BINUTILS_INCDIR|CMAKE_POSITION_INDEPENDENT_CODE|LLVM_BUILD_LLVMGOLD_PLUGIN" build-stage1/CMakeCache.txt || echo "No relevant entries found in CMakeCache.txt"
