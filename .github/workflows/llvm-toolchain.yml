@@ -38,7 +38,6 @@ jobs:
           mkdir binutils-build
           cd binutils-build
           ../binutils/configure --enable-gold --enable-plugins --disable-werror
-          make all-gold
 
       - name: Download LLVM Project release tarball
         run: |
