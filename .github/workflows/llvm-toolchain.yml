@@ -41,7 +41,7 @@ jobs:
       - name: Configure LLVM with CMake (Official Method)
         working-directory: mybuilddir
         run: |
-          cmake ../llvm -G Ninja -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/x86_64-linux-llvm-toolchain
+          cmake ../llvm -G Ninja -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/x86_64-linux-llvm-toolchain -DCMAKE_BUILD_TYPE=Release
 
       - name: Build LLVM (Official Method)
         working-directory: mybuilddir
