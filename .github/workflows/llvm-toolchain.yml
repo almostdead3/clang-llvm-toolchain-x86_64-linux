@@ -77,12 +77,12 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ inputs.version }}-official-build
-          name: LLVM Clang Toolchain x86_64-linux Official Build ${{ inputs.version }}
+          tag_name: ${{ inputs.version }}-build
+          name: LLVM Clang Toolchain ${{ inputs.version }}
           body: |
             LLVM Clang Toolchain for x86_64-linux, built as per official CMake notes.
             Version: ${{ inputs.version }}
-            Note: This build is a minimal official configuration and may not include all components by default.
+            Note: This build is a minimal official configuration and may not include all components by default. Thanks to llvm-project and github.
           files: x86_64-linux-llvm-toolchain-${{ inputs.version }}.tar.xz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
