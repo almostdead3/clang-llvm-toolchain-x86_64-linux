@@ -1,4 +1,4 @@
-name: official-llvm-build
+name: llvm-build
 
 on:
   workflow_dispatch:
@@ -50,7 +50,7 @@ jobs:
       - name: Configure LLVM with CMake (Official Method)
         working-directory: mybuilddir
         run: |
-          cmake ../llvm -G Ninja -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/x86_64-linux-llvm-toolchain -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;AArch64;ARM" -DLLVM_BINUTILS_INCDIR="${{ env.BINUTILS_INCLUDE_DIR }}" -DLLVM_ENABLE_PROJECTS="clang;lldb;lld" -DLLVM_USE_LINKER=gold
+          cmake ../llvm -G Ninja -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/x86_64-linux-llvm-toolchain -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86" -DLLVM_BINUTILS_INCDIR="${{ env.BINUTILS_INCLUDE_DIR }}" -DLLVM_ENABLE_PROJECTS="clang;lldb;lld" -DLLVM_USE_LINKER=gold
 
       - name: Build LLVM (Official Method)
         working-directory: mybuilddir
