@@ -50,7 +50,7 @@ jobs:
       - name: Configure LLVM with CMake (Official Method)
         working-directory: mybuilddir
         run: |
-          cmake ../llvm -G Ninja -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/x86_64-linux-llvm-toolchain -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86" -DLLVM_BINUTILS_INCDIR="${{ env.BINUTILS_INCLUDE_DIR }}" -DLLVM_ENABLE_PROJECTS="clang;lldb;lld" -DLLVM_USE_LINKER=gold
+          cmake ../llvm -G Ninja -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/llvm-toolchain -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86" -DLLVM_BINUTILS_INCDIR="${{ env.BINUTILS_INCLUDE_DIR }}" -DLLVM_ENABLE_PROJECTS="clang;lldb;lld" -DLLVM_USE_LINKER=lld
 
       - name: Build LLVM (Official Method)
         working-directory: mybuilddir
@@ -63,15 +63,15 @@ jobs:
       - name: Verify Installed Files (Basic Check)
         run: |
           echo "Listing contents of the installed toolchain:"
-          ls -R ${{ github.workspace }}/x86_64-linux-llvm-toolchain
+          ls -R ${{ github.workspace }}/llvm-toolchain
           echo "Checking for clang executable:"
-          test -f ${{ github.workspace }}/x86_64-linux-llvm-toolchain/bin/clang && echo "clang found." || echo "clang NOT found."
+          test -f ${{ github.workspace }}/llvm-toolchain/bin/clang && echo "clang found." || echo "clang NOT found."
 
       - name: Compress toolchain
         run: |
-          tar -cJvf x86_64-linux-llvm-toolchain-${{ inputs.version }}.tar.xz x86_64-linux-llvm-toolchain
+          tar -cJvf llvm-toolchain-${{ inputs.version }}.tar.xz llvm-toolchain
           echo "Compressed toolchain size:"
-          du -sh x86_64-linux-llvm-toolchain-${{ inputs.version }}.tar.xz
+          du -sh llvm-toolchain-${{ inputs.version }}.tar.xz
 
       - name: Create GitHub Release
         id: create_release
@@ -83,6 +83,6 @@ jobs:
             LLVM Clang Toolchain for x86_64-linux, built as per official CMake notes.
             Version: ${{ inputs.version }}
             Note: This build is a minimal official configuration and may not include all components by default. Thanks to llvm-project and github.
-          files: x86_64-linux-llvm-toolchain-${{ inputs.version }}.tar.xz
+          files: llvm-toolchain-${{ inputs.version }}.tar.xz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
