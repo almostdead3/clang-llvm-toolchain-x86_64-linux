@@ -12,13 +12,26 @@ on:
         required: false
         type: string
         default: 'binutils-2_41'
+      target_triple:
+        description: 'Target triple for cross-compilation (e.g., aarch64-linux-gnu, riscv64-linux-gnu). Leave empty for native build.'
+        required: false
+        type: string
+        default: ''
+      sysroot_path:
+        description: 'Path to the target sysroot if cross-compiling (e.g., /home/runner/sysroot-deb-arm64). Required if target_triple is set.'
+        required: false
+        type: string
+        default: ''
 
 jobs:
-  build-official-llvm:
+  build-llvm:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       BINUTILS_INCLUDE_DIR: ${{ github.workspace }}/binutils/include
+      TARGET_TRIPLE: ${{ inputs.target_triple }}
+      SYSROOT_PATH: ${{ inputs.sysroot_path }}
+      CFLAGS: ""
 
     steps:
       - name: Checkout repository's default branch
@@ -27,10 +40,14 @@ jobs:
       - name: Create build directory
         run: mkdir mybuilddir
 
-      - name: Install build dependencies (CMake, Ninja, Git)
+      - name: Install build dependencies (CMake, Ninja, Git, etc.)
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl build-essential python3 cmake ninja-build git texinfo flex bison libgmp-dev libmpfr-dev lld
+          sudo apt-get install -y curl build-essential python3 cmake ninja-build git texinfo flex bison libgmp-dev libmpfr-dev
+
+          if [ -n "${{ env.TARGET_TRIPLE }}" ]; then
+            sudo apt-get install -y clang lld
+          fi
 
       - name: Clone Binutils-GDB for Gold plugin headers and build
         run: |
@@ -47,31 +64,88 @@ jobs:
       - name: Extract LLVM Project source
         run: tar -xf llvm-project.tar.xz -C . --strip-components 1
 
-      - name: Configure LLVM with CMake (Official Method)
+      - name: Prepare Sysroot (Placeholder for Cross-Compilation)
+        if: ${{ env.TARGET_TRIPLE != '' }}
+        run: |
+          echo "Cross-compilation target: ${{ env.TARGET_TRIPLE }}"
+          echo "Sysroot path: ${{ env.SYSROOT_PATH }}"
+          if [ -z "${{ env.SYSROOT_PATH }}" ]; then
+            echo "Error: SYSROOT_PATH must be provided for cross-compilation."
+            exit 1
+          fi
+
+          echo "Dummy sysroot creation for demonstration:"
+          mkdir -p "${{ env.SYSROOT_PATH }}/usr/lib/${{ env.TARGET_TRIPLE }}"
+          touch "${{ env.SYSROOT_PATH }}/usr/lib/${{ env.TARGET_TRIPLE }}/libc.so"
+          mkdir -p "${{ env.SYSROOT_PATH }}/usr/include"
+          touch "${{ env.SYSROOT_PATH }}/usr/include/stdio.h"
+          echo "Please ensure the actual sysroot for ${{ env.TARGET_TRIPLE }} is correctly populated at ${{ env.SYSROOT_PATH }}"
+
+      - name: Create Toolchain File (for Cross-Compilation)
+        if: ${{ env.TARGET_TRIPLE != '' }}
+        working-directory: ${{ github.workspace }}
+        run: |
+          TOOLCHAIN_FILE_NAME="${{ env.TARGET_TRIPLE }}-clang.cmake"
+          echo "Creating toolchain file: $TOOLCHAIN_FILE_NAME"
+          cat - <<EOF > "$TOOLCHAIN_FILE_NAME"
+          set(CMAKE_SYSTEM_NAME Linux)
+          set(CMAKE_SYSROOT "${{ env.SYSROOT_PATH }}")
+          set(CMAKE_C_COMPILER_TARGET ${{ env.TARGET_TRIPLE }})
+          set(CMAKE_CXX_COMPILER_TARGET ${{ env.TARGET_TRIPLE }})
+          set(CMAKE_C_FLAGS_INIT "${{ env.CFLAGS }}")
+          set(CMAKE_CXX_FLAGS_INIT "${{ env.CFLAGS }}")
+          set(CMAKE_LINKER_TYPE LLD)
+          set(CMAKE_C_COMPILER clang)
+          set(CMAKE_CXX_COMPILER clang++)
+          set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+          set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+          set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+          set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+          EOF
+
+      - name: Configure LLVM with CMake
         working-directory: mybuilddir
         run: |
-          cmake ../llvm -G Ninja -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/x86_64-linux-llvm-toolchain -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86" -DLLVM_BINUTILS_INCDIR="${{ env.BINUTILS_INCLUDE_DIR }}" -DLLVM_ENABLE_PROJECTS="clang;lldb;lld" -DLLVM_USE_LINKER=lld
+          CMAKE_COMMON_ARGS="-G Ninja -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/llvm-toolchain -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD='AArch64;ARM;X86' -DLLVM_BINUTILS_INCDIR='${{ env.BINUTILS_INCLUDE_DIR }}' -DLLVM_ENABLE_PROJECTS='clang;lldb;lld' -DLLVM_USE_LINKER=gold"
 
-      - name: Build LLVM (Official Method)
+          if [ -n "${{ env.TARGET_TRIPLE }}" ]; then
+            echo "Configuring for cross-compilation to ${{ env.TARGET_TRIPLE }}"
+            TOOLCHAIN_FILE="${{ github.workspace }}/${{ env.TARGET_TRIPLE }}-clang.cmake"
+            cmake $CMAKE_COMMON_ARGS \
+              -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" \
+              -DLLVM_HOST_TRIPLE="${{ env.TARGET_TRIPLE }}" \
+              ../llvm
+          else
+            echo "Configuring for native compilation"
+            cmake $CMAKE_COMMON_ARGS ../llvm
+          fi
+
+      - name: Build LLVM
         working-directory: mybuilddir
         run: cmake --build .
 
-      - name: Install LLVM (Official Method)
+      - name: Install LLVM
         working-directory: mybuilddir
         run: cmake --build . --target install
 
       - name: Verify Installed Files (Basic Check)
         run: |
           echo "Listing contents of the installed toolchain:"
-          ls -R ${{ github.workspace }}/x86_64-linux-llvm-toolchain
+          ls -R ${{ github.workspace }}/llvm-toolchain
           echo "Checking for clang executable:"
-          test -f ${{ github.workspace }}/x86_64-linux-llvm-toolchain/bin/clang && echo "clang found." || echo "clang NOT found."
+          test -f ${{ github.workspace }}/llvm-toolchain/bin/clang && echo "clang found." || echo "clang NOT found."
 
       - name: Compress toolchain
         run: |
-          tar -cJvf x86_64-linux-llvm-toolchain-${{ inputs.version }}.tar.xz x86_64-linux-llvm-toolchain
+          TAR_FILENAME="llvm-toolchain-${{ inputs.version }}"
+          if [ -n "${{ env.TARGET_TRIPLE }}" ]; then
+            TAR_FILENAME="${TAR_FILENAME}-${{ env.TARGET_TRIPLE }}"
+          fi
+          TAR_FILENAME="${TAR_FILENAME}.tar.xz"
+
+          tar -cJvf "$TAR_FILENAME" llvm-toolchain
           echo "Compressed toolchain size:"
-          du -sh x86_64-linux-llvm-toolchain-${{ inputs.version }}.tar.xz
+          du -sh "$TAR_FILENAME"
 
       - name: Create GitHub Release
         id: create_release
@@ -80,9 +154,11 @@ jobs:
           tag_name: ${{ inputs.version }}-build
           name: LLVM Clang Toolchain ${{ inputs.version }}
           body: |
-            LLVM Clang Toolchain for x86_64-linux, built as per official CMake notes.
+            LLVM Clang Toolchain for AArch64,ARM,X86-linux, built as per official CMake notes.
             Version: ${{ inputs.version }}
+            Target Triple: ${{ env.TARGET_TRIPLE || 'Native' }}
             Note: This build is a minimal official configuration and may not include all components by default. Thanks to llvm-project and github.
-          files: x86_64-linux-llvm-toolchain-${{ inputs.version }}.tar.xz
+          files: |
+            llvm-toolchain-${{ inputs.version }}-${{ env.TARGET_TRIPLE || '' }}.tar.xz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
